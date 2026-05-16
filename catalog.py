@@ -1,14 +1,15 @@
 import json
 import os
+import numpy as np
 import faiss
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 
 # Globals (populated once by load_catalog() at app startup)
 _catalog: list[dict] = []
 _index: faiss.IndexFlatIP | None = None
-_model: SentenceTransformer | None = None
+_model: TextEmbedding | None = None
 
-# Map catalog keys field values → single-letter test_type codes
+# Map catalog "keys" field values → single-letter test_type codes
 KEY_TO_TYPE: dict[str, str] = {
     "Ability & Aptitude": "A",
     "Assessment Exercises": "E",
@@ -104,20 +105,16 @@ def load_catalog(path: str = "data/catalog.json") -> None:
 
     # Load embedding model (downloads ~90MB on first run, cached after)
     print("[catalog] Loading sentence-transformer model...")
-    _model = SentenceTransformer("all-MiniLM-L6-v2")
+    _model = TextEmbedding("BAAI/bge-small-en-v1.5")
 
     # Build embedding texts
     texts = [_build_embedding_text(item) for item in _catalog]
 
     # Encode all items (batched, with progress)
     print("[catalog] Encoding catalog items...")
-    embeddings = _model.encode(
-        texts,
-        normalize_embeddings=True,  # L2 normalise for cosine via inner product
-        batch_size=64,
-        show_progress_bar=True,
-    )
-    embeddings = embeddings.astype("float32")
+    # fastembed returns a generator; collect into numpy array
+    # BGE-small already returns L2-normalised vectors- no extra step needed
+    embeddings = np.array(list(_model.embed(texts)), dtype="float32")
 
     # Build flat inner-product index (exact search, fine for <10k items)
     dim = embeddings.shape[1]
@@ -135,7 +132,7 @@ def search(query: str, k: int = 15) -> list[dict]:
     if _model is None or _index is None:
         raise RuntimeError("Catalog not loaded. Call load_catalog() first.")
 
-    q_emb = _model.encode([query], normalize_embeddings=True).astype("float32")
+    q_emb = np.array(list(_model.embed([query])), dtype="float32")
     scores, idxs = _index.search(q_emb, min(k, _index.ntotal))
 
     results = []
