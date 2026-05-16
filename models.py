@@ -14,7 +14,7 @@ class ChatRequest(BaseModel):
 class Recommendation(BaseModel):
     name: str
     url: str
-    test_type: str   # single letter
+    test_type: str   # type code(s): A, P, C, B, D, E, K, S- combined with comma e.g. "K,S"
     keys: Optional[List[str]] = None       
     duration: Optional[str] = None          
     languages: Optional[List[str]] = None  

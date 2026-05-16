@@ -350,7 +350,7 @@ def run_agent(messages: list[Message]) -> dict:
         else:
             # Fallback if extraction fails
             search_query = _extract_search_query(messages)
-            catalog_results = search(search_query, k=6)
+            catalog_results = search(search_query, k=15)
             catalog_context = build_catalog_context(search_query, catalog_results)
     else:
         # For all other intents: semantic search on conversation summary
@@ -403,7 +403,7 @@ def run_agent(messages: list[Message]) -> dict:
                     duration=r.get("duration") or r.get("duration_raw") or None,
                     languages=r.get("languages") or [],
                 )
-                for r in catalog_results[:5]
+                for r in catalog_results[:10]
             ]
 
         # reply stays as the LLM's plain intro text

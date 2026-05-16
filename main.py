@@ -63,10 +63,62 @@ def health():
 @app.post("/chat", response_model=ChatResponse)
 def chat(req: ChatRequest):
     """
-    Stateless chat endpoint.
+    Stateless chat endpoint for SHL assessment recommendations.
+ 
+    Send the full conversation history on every request. Append only
+    response["reply"] as the assistant message, never the full response object.
+ 
+    **Example: **
+ 
+        Turn 1 request:
+        {"messages": [
+            {"role": "user", "content": "Hiring a mid-level Java developer, 4 years experience."}
+        ]}
+ 
+        Turn 1 response:
+        {"reply": "For a mid-level Java developer, hiring focus. Shortlist: Core Java (Advanced Level) (New), OPQ32r.",
+         "recommendations": [
+           {"name": "Core Java (Advanced Level) (New)", "url": "https://www.shl.com/...",
+            "test_type": "K", "keys": ["Knowledge & Skills"], "duration": "13 minutes", "languages": ["English (USA)"]},
+           {"name": "Occupational Personality Questionnaire OPQ32r", "url": "https://www.shl.com/...",
+            "test_type": "P", "keys": ["Personality & Behavior"], "duration": "25 minutes", "languages": ["English International"]}
+         ],
+         "end_of_conversation": false}
+ 
+        Turn 2 request (append reply, add new user message):
+        {"messages": [
+            {"role": "user",      "content": "Hiring a mid-level Java developer, 4 years experience."},
+            {"role": "assistant", "content": "For a mid-level Java developer, hiring focus. Shortlist: Core Java (Advanced Level) (New), OPQ32r."},
+            {"role": "user",      "content": "Why is OPQ32r included?"}
+        ]}
+ 
+        Turn 2 response:
+        {"reply": "OPQ32r measures workplace behaviour and communication style — relevant for a developer who collaborates with stakeholders.",
+         "recommendations": [...same as above...],
+         "end_of_conversation": false}
 
-    The full conversation history is sent in every request.
-    Returns the next agent reply plus (optionally) a structured shortlist.
+        Turn 3 request (user confirms, conversation ends):
+        {"messages": [
+            {"role": "user",      "content": "Hiring a mid-level Java developer, 4 years experience."},
+            {"role": "assistant", "content": "For a mid-level Java developer, hiring focus. Shortlist: Core Java (Advanced Level) (New), OPQ32r."},
+            {"role": "user",      "content": "Why is OPQ32r included?"},
+            {"role": "assistant", "content": "OPQ32r measures workplace behaviour and communication style — relevant for a developer who collaborates with stakeholders."},
+            {"role": "user",      "content": "Perfect, that works."}
+        ]}
+ 
+        Turn 3 response (end_of_conversation is now true):
+        {"reply": "Confirmed. Core Java (Advanced Level) (New) and OPQ32r as your selection battery.",
+         "recommendations": [
+           {"name": "Core Java (Advanced Level) (New)", ...},
+           {"name": "Occupational Personality Questionnaire OPQ32r", ...}
+         ],
+         "end_of_conversation": true}
+
+    **Rules:**
+    - messages alternate: user / assistant / user / ...
+    - Max 8 messages total
+    - recommendations is null while clarifying, array of 1-10 when committed
+    - end_of_conversation is true only when user confirms the shortlist
     """
     # Basic validation 
     if not req.messages:
@@ -95,7 +147,7 @@ def chat(req: ChatRequest):
             detail="Conversation exceeds maximum of 8 messages.",
         )
 
-    # Run agent 
+    # Run agent
     logger.info(f"/chat called with {len(req.messages)} messages")
     start = time.time()
 
