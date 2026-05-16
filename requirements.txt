@@ -1,0 +1,11 @@
+faiss-cpu
+fastapi
+google-generativeai
+groq
+httpx
+numpy
+pydantic
+python-dotenv
+requests
+sentence-transformers
+uvicorn[standard]
