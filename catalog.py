@@ -3,14 +3,12 @@ import os
 import numpy as np
 import faiss
 
-# ---------------------------------------------------------------------------
 # Globals (populated once by load_catalog() at app startup)
-# ---------------------------------------------------------------------------
 _catalog: list[dict] = []
 _index: faiss.IndexFlatIP | None = None
-# No embedding model at runtime — embeddings are pre-computed and loaded from disk
+# No embedding model at runtime- embeddings are pre-computed and loaded from disk
 
-# Map catalog "keys" field values → single-letter test_type codes
+# Map catalog keys field values to single-letter test_type codes
 KEY_TO_TYPE: dict[str, str] = {
     "Ability & Aptitude": "A",
     "Assessment Exercises": "E",
@@ -87,7 +85,7 @@ def load_catalog(path: str = "data/catalog.json") -> None:
     Load catalog JSON, embed every item, build FAISS index.
     Called once at app startup via FastAPI lifespan.
     """
-    global _catalog, _index, _model
+    global _catalog, _index
 
     if not os.path.exists(path):
         raise FileNotFoundError(
@@ -99,8 +97,7 @@ def load_catalog(path: str = "data/catalog.json") -> None:
         raw = json.load(f)
 
     # Filter to Individual Test Solutions only (exclude pre-packaged job solutions)
-    # The catalog JSON already contains only individual test solutions per the task
-    # but we defensively keep all items since the JSON is pre-filtered.
+    # The catalog JSON already contains only individual test solutions per the task but we defensively keep all items since the JSON is pre-filtered.
     _catalog = raw
 
     print(f"[catalog] Loaded {len(_catalog)} items from {path}")
@@ -130,7 +127,7 @@ def load_catalog(path: str = "data/catalog.json") -> None:
     print(f"[catalog] FAISS index built: {_index.ntotal} vectors, dim={dim}")
 
 
-# Query embedding — lazy-loaded only when search() is first called.
+# Query embedding- lazy-loaded only when search() is first called.
 # Uses the same model as precompute_embeddings.py so vectors are compatible.
 _query_model = None
 
@@ -144,8 +141,8 @@ def _embed_query(query: str) -> "np.ndarray":
             print("[catalog] Query embedding model loaded.")
         except ImportError:
             raise RuntimeError(
-                "fastembed is required for query embedding. "
-                "pip install fastembed"
+                "fastembed-cpu is required for query embedding. "
+                "pip install fastembed-cpu"
             )
     q = np.array(list(_query_model.embed([query])), dtype="float32")
     # L2-normalise
@@ -154,13 +151,12 @@ def _embed_query(query: str) -> "np.ndarray":
     return q / norm
 
 
-
 def search(query: str, k: int = 15) -> list[dict]:
     """
     Semantic search over the catalog.
     Returns up to k items with full metadata + similarity score.
     """
-    if _model is None or _index is None:
+    if _index is None:
         raise RuntimeError("Catalog not loaded. Call load_catalog() first.")
 
     q_emb = _embed_query(query)
@@ -199,5 +195,5 @@ def get_item_by_name(name: str) -> dict | None:
 
 
 def get_all_items() -> list[dict]:
-    """Return full catalog — used for building system context."""
+    """Return full catalog- used for building system context."""
     return _catalog
