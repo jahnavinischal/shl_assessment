@@ -3,7 +3,7 @@ fastapi
 fastembed==0.4.2
 groq
 httpx
-onnxruntime==1.19.2
+numpy
 pydantic
 python-dotenv
 requests
