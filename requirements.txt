@@ -1,10 +1,9 @@
 faiss-cpu
 fastapi
-fastembed==0.3.6
+fastembed-cpu==0.4.2
 google-generativeai
 groq
 httpx
-onnxruntime==1.19.2
 pydantic
 python-dotenv
 requests
